@@ -1,4 +1,4 @@
- Copyright (c) Microsoft Corporation. All rights reserved.
+# Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
 import sys
@@ -18,7 +18,18 @@ from botbuilder.schema import Activity, ActivityTypes
 from bots import EchoBot
 from config import DefaultConfig
 
+## Adding credential information
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.textanalytics import TextAnalyticsClient
+
+
 CONFIG = DefaultConfig()
+
+#2024/11/10 -START Extended for T6 Project in MSAI 631 - Adding Sentiment Analysis to the bot
+credential = AzureKeyCredential(CONFIG.API_KEY)
+endpointURI = CONFIG.ENDPOINT_URI
+text_analytics_client = TextAnalyticsClient(endpoint=endpointURI, credential=credential)
+# 2024/11/10 STOP Extended for T6 Project in MSAI 631 
 
 # Create adapter.
 # See https://aka.ms/about-bot-adapter to learn more about how bots work.
@@ -65,13 +76,15 @@ async def messages(req: Request) -> Response:
     if "application/json" in req.headers["Content-Type"]:
         body = await req.json()
 
-        # Start the reverse string
-        print(body)
-        body["text"] = body["text"][::-1]
-        body["text"] = "The reverse of the input string in upper case is:" + body["text"].upper()
-        print(body)
-        # End reverse string
-
+        # 2024/11/10- Start performing MSAI_631 Sentiment Analysis
+        textToUse = body["text"]
+        print(f"textToUse = {textToUse}")
+        documents = [{"id": "1", "language": "en", "text": body["text"]}]
+        response = text_analytics_client.analyze_sentiment(documents)
+        successful_responses = [doc for doc in response if not doc.is_error] 
+        body["text"] = successful_responses
+        # 2024/11/10 - End Performing MSAI_631 Sentiment Analysis 
+    
     else:
         return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
     activity =Activity().deserialize(body)
@@ -89,8 +102,4 @@ if __name__ == "__main__":
         web.run_app(APP, host="localhost", port=CONFIG.PORT)
     except Exception as error:
         raise error
-~
-~
-~
-~
 
